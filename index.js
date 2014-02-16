@@ -13,11 +13,18 @@ var mongodb = require('mongodb'),
     MongoClient = mongodb.MongoClient,
     q = require('q'),
     _ = require('lodash'),
+    memwatch = require('memwatch'),
     sampledata = require('./sampledata.json'),
     startDate = new Date("1970-01-01"),
     endDate = new Date("2015-01-01"),
     currDate,
+    collName = 'daily',
+//    collName = 'test_no_separate',
     i;
+
+memwatch.on('leak', function (info) {
+    console.log('LEAK', info);
+});
 
 function addJson(collection, json, date) {
     var saveData = _.cloneDeep(json);
@@ -33,7 +40,7 @@ function addJson(collection, json, date) {
 
 if (process.argv[2] === 'prepare') {
     q.nfcall(MongoClient.connect, 'mongodb://127.0.0.1:27017/weather').then(function (db) {
-        var collection = db.collection('test_no_separate'),
+        var collection = db.collection(collName),
             promiseChain = q();
 
         console.log("Connected");
@@ -56,7 +63,7 @@ if (process.argv[2] === 'prepare') {
 } else if (process.argv[2] === "check") {
     q.nfcall(MongoClient.connect, 'mongodb://127.0.0.1:27017/weather').then(function (db) {
         console.log("DB opened");
-        var collection = db.collection('test_no_separate');
+        var collection = db.collection(collName);
         return q.ninvoke(collection.find(), "toArray").then(function (array) {
             console.log("Array length:", array.length);
         }).finally(function () {
@@ -71,7 +78,7 @@ if (process.argv[2] === 'prepare') {
 } else if (process.argv[2] === "count") {
     q.nfcall(MongoClient.connect, 'mongodb://127.0.0.1:27017/weather').then(function (db) {
         console.log("DB opened");
-        var collection = db.collection('test_no_separate');
+        var collection = db.collection(collName);
         return q.ninvoke(collection, "count").then(function (count) {
             console.log("COUNT:", count);
         }).finally(function () {
@@ -84,12 +91,15 @@ if (process.argv[2] === 'prepare') {
         console.log("finished");
     });
 } else if (process.argv[2] === 'query') {
-    var startEpoch = +(new Date(process.argv[3]) / 1000) || 1262304000,
-        endEpoch = +(new Date(process.argv[4]) / 1000) || startEpoch;
+    var startEpoch = +(new Date(process.argv[3]) / 1000) || 0,
+        endEpoch = +(new Date(process.argv[4]) / 1000) || 1364595428000;
 
     q.nfcall(MongoClient.connect, 'mongodb://127.0.0.1:27017/weather').then(function (db) {
         console.log("DB opened");
-        var collection = db.collection('test_no_separate');
+        console.log(startEpoch);
+
+        var collection = db.collection(collName);
+
         return q.ninvoke(collection.find({
             "current_observation.observation_epoch": {
                 $gte: startEpoch,
@@ -115,7 +125,7 @@ if (process.argv[2] === 'prepare') {
 
     q.nfcall(MongoClient.connect, 'mongodb://127.0.0.1:27017/weather').then(function (db) {
         console.log("DB opened");
-        var collection = db.collection('test_no_separate');
+        var collection = db.collection(collName);
 
         var mapFunc = function () {
             emit("test", this.current_observation.temp_c);
